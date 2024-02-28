@@ -1,13 +1,60 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+#include <stdint.h>
+
+// GPIO direction and value paths
+#define GPIO_BASE_PATH "/sys/class/gpio"
+#define GPIO_DIRECTION_FILE "direction"
+#define GPIO_VALUE_FILE "value"
+
 // Function to export a GPIO pin
 int32_t export_gpio(int32_t pin) {
-    //todo
+    int32_t fd, len;
+    char buf[64];
+    int32_t retries = 3;
+
+    while (retries > 0) {
+        fd = open(GPIO_BASE_PATH "/export", O_WRONLY);
+        if (fd < 0) {
+            (void)perror("Failed to open export for writing!");
+            return -1;
+        }
+
+        len = snprintf(buf, sizeof(buf), "%d", pin);
+        if (write(fd, buf, len) < 0) {
+            (void)perror("Failed to write pin to export file!");
+            (void)close(fd);
+            retries--;
+            sleep(1); // Wait for a second before retrying
+        } else {
+            (void)close(fd);
+            return 0; // Success
+        }
+    }
+
+    return -1; // Failed after retries
 }
 
 // Function to set the direction of a GPIO pin
 int32_t set_gpio_direction(int32_t pin, char *direction) {
-    //todo
-}
+    int32_t fd;
+    char buf[64];
+    snprintf(buf, sizeof(buf), GPIO_BASE_PATH "/gpio%d/%s", pin, GPIO_DIRECTION_FILE);
 
+    fd = open(buf, O_WRONLY);
+    if (fd < 0) {
+        (void)perror("Failed to open direction file for writing!");
+        return -1;
+    }
+
+    write(fd, direction, strlen(direction));
+    (void)close(fd);
+
+    return 0;
+}
 
 
 // Function to initialize GPIO pins
